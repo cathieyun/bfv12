@@ -5,3 +5,37 @@ version = 3
 [[package]]
 name = "bfv"
 version = "0.1.0"
+dependencies = [
+ "probability",
+]
+
+[[package]]
+name = "libc"
+version = "0.2.119"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1bf2e165bb3457c8e098ea76f3e3bc9db55f87aa90d52d0e6be741470916aaa4"
+
+[[package]]
+name = "probability"
+version = "0.17.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01935a29f0dd293b7d0254144168084cc8ada317b107635c777fb7d0fb5120e5"
+dependencies = [
+ "random",
+ "special",
+]
+
+[[package]]
+name = "random"
+version = "0.12.2"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "97d13a3485349981c90c79112a11222c3e6e75de1d52b87a7525b3bf5361420f"
+
+[[package]]
+name = "special"
+version = "0.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "24a65e074159b75dcf173a4733ab2188baac24967b5c8ec9ed87ae15fcbc7636"
+dependencies = [
+ "libc",
+]
