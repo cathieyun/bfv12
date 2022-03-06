@@ -4,43 +4,55 @@ use std::ops::{Add, Mul, Neg, Sub};
 pub struct Poly {
     pub val: Vec<i64>,
     pub dimension: usize,
-    pub modulus: i64,
+    pub q: i64,
 }
+
+/// TODO(cathie): also implement over &Poly, so we don't have to do unnecessary cloning.
 
 impl Add<Poly> for Poly {
     type Output = Poly;
-    fn add(self, other: Poly) -> Self::Output{
-        assert!(self.dimension == other.dimension, "Polynomial dimensions are not equal");
-        assert!(self.modulus == other.modulus, "Polynomial moduli are not equal");
-        let q = self.modulus;
+    fn add(self, other: Poly) -> Self::Output {
+        assert!(
+            self.dimension == other.dimension,
+            "Polynomial dimensions are not equal"
+        );
+        assert!(self.q == other.q, "Polynomial moduli are not equal");
+        let q = self.q;
 
-        let out_val = self.val.into_iter()
-                              .zip(other.val.iter())
-                              .map(|(self_i, other_i)| (self_i + other_i) % q)
-                              .collect();
+        let out_val = self
+            .val
+            .into_iter()
+            .zip(other.val.iter())
+            .map(|(self_i, other_i)| (self_i + other_i) % q)
+            .collect();
         Poly {
             val: out_val,
             dimension: self.dimension,
-            modulus: self.modulus,
+            q,
         }
     }
 }
 
 impl Sub<Poly> for Poly {
     type Output = Poly;
-    fn sub(self, other: Poly) -> Self::Output{
-        assert!(self.dimension == other.dimension, "Polynomial dimensions are not equal");
-        assert!(self.modulus == other.modulus, "Polynomial moduli are not equal");
-        let q = self.modulus;
+    fn sub(self, other: Poly) -> Self::Output {
+        assert!(
+            self.dimension == other.dimension,
+            "Polynomial dimensions are not equal"
+        );
+        assert!(self.q == other.q, "Polynomial moduli are not equal");
+        let q = self.q;
 
-        let out_val = self.val.into_iter()
-                              .zip(other.val.iter())
-                              .map(|(self_i, other_i)| (self_i - other_i) % q)
-                              .collect();
+        let out_val = self
+            .val
+            .into_iter()
+            .zip(other.val.iter())
+            .map(|(self_i, other_i)| (self_i - other_i) % q)
+            .collect();
         Poly {
             val: out_val,
             dimension: self.dimension,
-            modulus: self.modulus,
+            q,
         }
     }
 }
@@ -58,12 +70,15 @@ impl Neg for Poly {
 impl Mul<Poly> for Poly {
     type Output = Poly;
     fn mul(self, other: Poly) -> Self::Output {
-        assert!(self.dimension == other.dimension, "Polynomial dimensions are not equal");
-        assert!(self.modulus == other.modulus, "Polynomial moduli are not equal");
+        assert!(
+            self.dimension == other.dimension,
+            "Polynomial dimensions are not equal"
+        );
+        assert!(self.q == other.q, "Polynomial moduli are not equal");
 
         let mut out_val = vec![0; self.dimension];
-        let q = self.modulus as i64;
         let degree = self.dimension - 1;
+        let q = self.q;
 
         for (i, self_i) in self.val.iter().enumerate() {
             for (j, other_j) in other.val.iter().enumerate() {
@@ -83,11 +98,56 @@ impl Mul<Poly> for Poly {
         Poly {
             val: out_val,
             dimension: self.dimension,
-            modulus: self.modulus,
+            q,
         }
     }
 }
 
+impl Mul<i64> for Poly {
+    type Output = Poly;
+    fn mul(self, other: i64) -> Self::Output {
+        let q = self.q;
+        let out_val = self
+            .val
+            .into_iter()
+            .map(|self_i| (self_i * other) % q)
+            .collect();
+        Poly {
+            val: out_val,
+            dimension: self.dimension,
+            q,
+        }
+    }
+}
+
+// Multiply by a float (f64) and taking the result mod q, rounding to the nearest integer.
+impl Mul<f64> for Poly {
+    type Output = Poly;
+    fn mul(self, other: f64) -> Self::Output {
+        let q = self.q;
+        let out_val = self
+            .val
+            .into_iter()
+            .map(|self_i| (self_i as f64 * other).round() as i64 % q)
+            .collect();
+        Poly {
+            val: out_val,
+            dimension: self.dimension,
+            q,
+        }
+    }
+}
+
+impl Poly {
+    pub fn modulo(mut self, modulus: i64) -> Poly {
+        for v in self.val.iter_mut() {
+            *v = *v % modulus
+        }
+        self
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use crate::poly::Poly;
 
@@ -95,14 +155,14 @@ mod tests {
         Poly {
             val: vec![-7, 0, 0, 3, -1, 6, -3, 5, 9, -5],
             dimension: 10,
-            modulus: 256,
+            q: 256,
         }
     }
     fn b_poly() -> Poly {
         Poly {
             val: vec![-1, -1, 0, 1, 0, -1, 1, 1, -1, -1],
             dimension: 10,
-            modulus: 256,
+            q: 256,
         }
     }
 
@@ -112,9 +172,9 @@ mod tests {
         let b = b_poly();
         let sum = a + b;
         println!("sum: {:?}", sum.val);
-        assert!(sum.val == vec![-8, -1, 0, 4, -1, 5, -2, 6, 8, -6]);
-        assert!(sum.dimension == 10);
-        assert!(sum.modulus == 256);
+        assert_eq!(sum.val, vec![-8, -1, 0, 4, -1, 5, -2, 6, 8, -6]);
+        assert_eq!(sum.dimension, 10);
+        assert_eq!(sum.q, 256);
     }
 
     #[test]
@@ -122,33 +182,54 @@ mod tests {
         let a = a_poly();
         let b = b_poly();
         let sub = a - b;
-        assert!(sub.val == vec![-6, 1, 0, 2, -1, 7, -4, 4, 10, -4]);
-        assert!(sub.dimension == 10);
-        assert!(sub.modulus == 256);
+        assert_eq!(sub.val, vec![-6, 1, 0, 2, -1, 7, -4, 4, 10, -4]);
+        assert_eq!(sub.dimension, 10);
+        assert_eq!(sub.q, 256);
     }
 
     #[test]
     fn neg_test() {
         let a = a_poly();
         let neg = -a;
-        assert!(neg.val == vec![7, 0, 0, -3, 1, -6, 3, -5, -9, 5]);
-        assert!(neg.dimension == 10);
-        assert!(neg.modulus == 256);
+        assert_eq!(neg.val, vec![7, 0, 0, -3, 1, -6, 3, -5, -9, 5]);
+        assert_eq!(neg.dimension, 10);
+        assert_eq!(neg.q, 256);
     }
 
     #[test]
-    fn mul_test() {
+    fn mul_poly_test() {
         let a = Poly {
             val: vec![4, 5, 0],
             dimension: 3,
-            modulus: 256,
+            q: 256,
         };
         let b = Poly {
             val: vec![7, 9, 0],
             dimension: 3,
-            modulus: 256,
+            q: 256,
         };
         let mul = a * b;
-        assert!(mul.val == vec![28, 71, 45]);
+        assert_eq!(mul.val, vec![28, 71, 45]);
+    }
+
+    #[test]
+    fn mul_const_i64_test() {
+        let a = a_poly();
+        let mul = a * 17;
+        assert_eq!(mul.val, vec![-119, 0, 0, 51, -17, 102, -51, 85, 153, -85]);
+    }
+
+    #[test]
+    fn mul_const_f64_test() {
+        let a = a_poly();
+        let mul = a * 3.7;
+        assert_eq!(mul.val, vec![-26, 0, 0, 11, -4, 22, -11, 19, 33, -19]);
+    }
+
+    #[test]
+    fn modulo() {
+        let a = a_poly();
+        let modulo = a.modulo(4);
+        assert_eq!(modulo.val, vec![-3, 0, 0, 3, -1, 2, -3, 1, 1, -1]);
     }
 }
