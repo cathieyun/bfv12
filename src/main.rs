@@ -32,3 +32,7 @@ mod plaintext;
 mod poly;
 mod random_source;
 mod tests;
+
+pub use plaintext::Plaintext;
+pub use ciphertext::Ciphertext;
+pub use keys::{SecretKey, PublicKey};
