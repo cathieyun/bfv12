@@ -7,3 +7,4 @@ edition = "2018"
 
 [dependencies]
 probability = "0.17.0"
+rand = "0.6.5" # TODO(cathie): upgrade version, use rand_distr for non-uniform distributions.
