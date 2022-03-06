@@ -86,12 +86,13 @@ impl Mul<Poly> for Poly {
 
                 // If the resulting coefficient is of degree <= N, add it to the output poly directly.
                 if target_degree <= degree {
-                    out_val[target_degree] += self_i * other_j % q;
+                    out_val[target_degree] = (out_val[target_degree] + self_i * other_j) % q;
                 }
                 // If the resulting coefficient is of degree >N, it wraps around (mod X^N + 1)
                 // so take the degree mod N, and subtract it from the output poly
                 else {
-                    out_val[target_degree % (degree + 1)] -= self_i * other_j % q;
+                    out_val[target_degree % (degree + 1)] =
+                        (out_val[target_degree % (degree + 1)] - self_i * other_j) % q;
                 }
             }
         }
@@ -139,9 +140,18 @@ impl Mul<f64> for Poly {
 }
 
 impl Poly {
-    pub fn modulo(mut self, modulus: i64) -> Poly {
+    // Take polynomial mod t, for converting to the signed plaintext space
+    pub fn _modulo(mut self, modulus: i64) -> Poly {
         for v in self.val.iter_mut() {
             *v = *v % modulus
+        }
+        self
+    }
+
+    // Add t to the polynomial and then take mod t, for converting to the unsigned plaintext space
+    pub fn unsigned_modulo(mut self, modulus: i64) -> Poly {
+        for v in self.val.iter_mut() {
+            *v = (*v + modulus) % modulus
         }
         self
     }
@@ -227,9 +237,16 @@ mod tests {
     }
 
     #[test]
-    fn modulo() {
+    fn modulo_test() {
         let a = a_poly();
-        let modulo = a.modulo(4);
+        let modulo = a._modulo(4);
         assert_eq!(modulo.val, vec![-3, 0, 0, 3, -1, 2, -3, 1, 1, -1]);
+    }
+
+    #[test]
+    fn unsigned_modulo_test() {
+        let a = a_poly();
+        let pos = a.unsigned_modulo(64);
+        assert_eq!(pos.val, vec![57, 0, 0, 3, 63, 6, 61, 5, 9, 59])
     }
 }

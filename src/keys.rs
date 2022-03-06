@@ -2,12 +2,12 @@ use super::poly::Poly;
 use super::random_source;
 use rand::{CryptoRng, RngCore};
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct SecretKey {
     pub poly: Poly,
 }
 
-#[derive(Debug)]
+#[derive(Clone, Debug)]
 pub struct PublicKey {
     pub p_0: Poly,
     pub p_1: Poly,
