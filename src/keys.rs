@@ -21,6 +21,12 @@ pub struct RelinearizationKey1 {
     pub l: i64, // TODO(cathie): change this to usize since it should never be very large.
 }
 
+#[derive(Clone, Debug)]
+pub struct RelinearizationKeySimple {
+    pub ek_0: Poly, // -(a * SK + e) + SK^2
+    pub ek_1: Poly, // a
+}
+
 impl SecretKey {
     // Generate a secret key by sampling the coefficients of s uniformly
     // from R_2, which is the set {-1, 0, 1}.
@@ -78,5 +84,24 @@ impl SecretKey {
             })
             .collect();
         RelinearizationKey1 { rlk, base, l }
+    }
+
+    pub fn relinearization_key_gen_simple<T: RngCore + CryptoRng>(
+        &self,
+        std_dev: f64,
+        dimension: usize,
+        rng: &mut T,
+    ) -> RelinearizationKeySimple {
+        let s = self.poly.clone();
+        let q = s.q;
+
+        let a = random_source::get_uniform(q, dimension, q, rng);
+        let e = random_source::get_gaussian(std_dev, dimension, q, rng);
+        let ek_0 = -(a.clone() * s.clone() + e) + s.clone() * s.clone();
+
+        RelinearizationKeySimple { 
+            ek_0, 
+            ek_1: a,
+        }
     }
 }

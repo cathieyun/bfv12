@@ -1,4 +1,4 @@
-use super::keys::{RelinearizationKey1, SecretKey};
+use super::keys::{RelinearizationKey1, RelinearizationKeySimple, SecretKey};
 use super::plaintext::Plaintext;
 use super::poly::Poly;
 use std::ops::{Add, Neg, Sub};
@@ -21,19 +21,40 @@ impl Ciphertext {
         Plaintext { poly, t: self.t }
     }
 
-    pub fn mul(&self, other: Ciphertext, rlk: RelinearizationKey1) -> Ciphertext {
-        let (c_0, c_1, c_2) = self.simple_mul(other);
+    pub fn mul_simple(&self, other: Ciphertext, rlk: RelinearizationKeySimple) -> Ciphertext {
+        let (c_0, c_1, c_2) = self.basic_mul(other);
 
-        self.relinearization_1(c_0, c_1, c_2, rlk)
+        self.relinearization_simple(c_0, c_1, c_2, rlk)
     }
 
-    fn simple_mul(&self, other: Ciphertext) -> (Poly, Poly, Poly) {
+    fn relinearization_simple(
+        &self,
+        c_0: Poly,
+        c_1: Poly,
+        c_2: Poly,
+        rlk: RelinearizationKeySimple,
+    ) -> Ciphertext {
+        Ciphertext {
+            c_0: c_0 + rlk.ek_0 * c_2.clone(),
+            c_1: c_1 + rlk.ek_1 * c_2,
+            t: self.t,
+        }
+    }
+
+    fn basic_mul(&self, other: Ciphertext) -> (Poly, Poly, Poly) {
         let delta_inv = self.t as f64 / self.c_0.q as f64;
+        println!("delta_inv: {:?}", delta_inv);
         let out_0 = self.c_0.clone() * other.c_0.clone() * delta_inv;
         let out_1 =
             (self.c_0.clone() * other.c_1.clone() + self.c_1.clone() * other.c_0) * delta_inv;
         let out_2 = self.c_1.clone() * other.c_1 * delta_inv;
         (out_0, out_1, out_2)
+    }
+
+    pub fn mul_1(&self, other: Ciphertext, rlk: RelinearizationKey1) -> Ciphertext {
+        let (c_0, c_1, c_2) = self.basic_mul(other);
+
+        self.relinearization_1(c_0, c_1, c_2, rlk)
     }
 
     fn relinearization_1(
@@ -43,6 +64,8 @@ impl Ciphertext {
         c_2: Poly,
         rlk: RelinearizationKey1,
     ) -> Ciphertext {
+        println!("c_0: {:?}", c_0);
+        println!("c_1: {:?}", c_1);
         // Decompose c_2 in base T (rlk_base), such that:
         // $ c_2 = \sum_{i=0}^l c_2^(i) T^i $ with $ c_2^(i) \in R_T $
         println!("c_2: {:?}", c_2);
@@ -69,10 +92,8 @@ impl Ciphertext {
         println!("c_2_1: {:?}", c_2_1);
 
         Ciphertext {
-            // c_0: c_0 + c_2_0,
-            // c_1: c_1 + c_2_1,
-            c_0,
-            c_1,
+            c_0: c_0 + c_2_0,
+            c_1: c_1 + c_2_1,
             t: self.t,
         }
     }
