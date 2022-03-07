@@ -8,7 +8,7 @@ mod tests {
         let mut rng = rand::rngs::StdRng::seed_from_u64(18);
 
         let secret_key = keys::SecretKey::generate(dimension, q, &mut rng);
-        let public_key = secret_key.public_key_gen(q, std_dev, dimension, &mut rng);
+        let public_key = secret_key.public_key_gen(q, std_dev, &mut rng);
 
         let plaintext = plaintext::Plaintext::new(msg, t, q);
         let ciphertext = plaintext.encrypt(public_key, std_dev, &mut rng);
@@ -82,7 +82,7 @@ mod tests {
         let dimension = msg_1.len();
 
         let secret_key = keys::SecretKey::generate(dimension, q, &mut rng);
-        let public_key = secret_key.public_key_gen(q, std_dev, dimension, &mut rng);
+        let public_key = secret_key.public_key_gen(q, std_dev, &mut rng);
 
         let plaintext_1 = plaintext::Plaintext::new(msg_1, t, q);
         let ciphertext_1 = plaintext_1.encrypt(public_key.clone(), std_dev, &mut rng);

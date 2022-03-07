@@ -1,4 +1,4 @@
-use super::keys::{RelinearizationKey1, RelinearizationKeySimple, SecretKey};
+use super::keys::{RelinearizationKey1, RelinearizationKeySimple, RelinearizationKey2, SecretKey};
 use super::plaintext::Plaintext;
 use super::poly::Poly;
 use std::ops::{Add, Neg, Sub};
@@ -43,7 +43,6 @@ impl Ciphertext {
 
     fn basic_mul(&self, other: Ciphertext) -> (Poly, Poly, Poly) {
         let delta_inv = self.t as f64 / self.c_0.q as f64;
-        println!("delta_inv: {:?}", delta_inv);
         let out_0 = self.c_0.clone() * other.c_0.clone() * delta_inv;
         let out_1 =
             (self.c_0.clone() * other.c_1.clone() + self.c_1.clone() * other.c_0) * delta_inv;
@@ -91,6 +90,37 @@ impl Ciphertext {
         println!("c_2_0: {:?}", c_2_0);
         println!("c_2_1: {:?}", c_2_1);
 
+        Ciphertext {
+            c_0: c_0 + c_2_0,
+            c_1: c_1 + c_2_1,
+            t: self.t,
+        }
+    }
+
+    pub fn mul_2(&self, other: Ciphertext, rlk: RelinearizationKey2) -> Ciphertext {
+        let (c_0, c_1, c_2) = self.basic_mul(other);
+
+        self.relinearization_2(c_0, c_1, c_2, rlk)
+    }
+
+    fn relinearization_2(
+        &self,
+        c_0: Poly,
+        c_1: Poly,
+        c_2: Poly,
+        rlk: RelinearizationKey2,
+    ) -> Ciphertext {
+        let q = c_0.q;
+        let mut rlk_0_q = rlk.rlk_0.clone();
+        let mut rlk_1_q = rlk.rlk_1.clone();
+        // Change rlk to be mod q instead of p * q
+        rlk_0_q.q = q;
+        rlk_1_q.q = q;
+
+        let p_inv = 1.0 / rlk.p as f64;
+
+        let c_2_0 = c_2.clone() * rlk_0_q * p_inv;
+        let c_2_1 = c_2.clone() * rlk_1_q * p_inv;
         Ciphertext {
             c_0: c_0 + c_2_0,
             c_1: c_1 + c_2_1,
