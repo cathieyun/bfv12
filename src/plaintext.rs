@@ -43,9 +43,13 @@ impl Plaintext {
 
         let delta = (q as f64 / self.t as f64).floor() as i64;
 
-        // TODO: add the multiplication by delta
         let c_0 = pub_key.p_0 * u.clone() + e_1 + m * delta;
         let c_1 = pub_key.p_1 * u + e_2;
-        Ciphertext { c_0, c_1 }
+
+        Ciphertext {
+            c_0,
+            c_1,
+            t: self.t,
+        }
     }
 }

@@ -7,7 +7,7 @@ pub struct Poly {
     pub q: i64,
 }
 
-/// TODO(cathie): also implement over &Poly, so we don't have to do unnecessary cloning.
+/// TODO(cathie): also implement ops over &Poly, so we don't have to do unnecessary cloning.
 
 impl Add<Poly> for Poly {
     type Output = Poly;
@@ -140,6 +140,13 @@ impl Mul<f64> for Poly {
 }
 
 impl Poly {
+    pub fn empty(dimension: usize, q: i64) -> Poly {
+        Poly {
+            val: vec![0; dimension],
+            dimension,
+            q,
+        }
+    }
     // Take polynomial mod t, for converting to the signed plaintext space
     pub fn _modulo(mut self, modulus: i64) -> Poly {
         for v in self.val.iter_mut() {
@@ -154,6 +161,69 @@ impl Poly {
             *v = (*v + modulus) % modulus
         }
         self
+    }
+
+    // Decompose a polynomial to l levels, with each level base T, such that:
+    // $ poly = sum_{i=0}^l poly^(i) T^i $ with $ poly^(i) \in R_T $
+    pub fn decompose(self, l: i64, base: i64) -> Vec<Poly> {
+        let mut mut_poly = self.val.clone();
+
+        // Iterate i: from highest to lowest level, starting with l
+        let out_polys: Vec<Poly> = (0..l)
+            .rev()
+            .map(|i| {
+                // T^i, which is the multiplier for that level i
+                let base_i = base.pow(i as u32);
+
+                // Iterate j: through the coefficients in poly, to decompose for level i
+                let dec_val_i: Vec<i64> = mut_poly
+                    .iter_mut()
+                    .map(|val_j| {
+                        // Calculate how many times T^i divides the coefficient, to get decomposition
+                        let fl_div = *val_j as f64 / base_i as f64;
+                        let int_div = if fl_div > 0.0 {
+                            fl_div.floor()
+                        } else {
+                            fl_div.ceil()
+                        } as i64;
+                        // Update the coefficient by subtracting T^i * the decomposed value
+                        *val_j = *val_j - base_i * int_div;
+                        // Return the decomposed value for that coefficient for level i
+                        int_div
+                    })
+                    .collect();
+                Poly {
+                    val: dec_val_i,
+                    dimension: self.dimension,
+                    q: self.q,
+                }
+            })
+            .collect();
+        // We can't reverse within the original expression because the two "rev" calls cancel each other out
+        // and we get the wrong decomposition answer (decomposing starting from the smallest levels).
+        out_polys.into_iter().rev().collect()
+    }
+
+    fn _decompose_i64(val: i64, l: i64, base: i64) -> Vec<i64> {
+        let mut mut_val = val.clone();
+        let out: Vec<i64> = (0..l)
+            .rev()
+            .map(|i| {
+                let base_i = base.pow(i as u32);
+                // Calcualte how many times base^i divides the value
+                let fl_div = (mut_val as f64) / (base_i as f64);
+                let int_div = if fl_div > 0.0 {
+                    fl_div.floor()
+                } else {
+                    fl_div.ceil()
+                } as i64;
+                mut_val -= int_div * base_i;
+                int_div
+            })
+            .collect();
+        // We can't reverse within the original expression because the two "rev" calls cancel each other out
+        // and we get the wrong decomposition answer (decomposing starting from the smallest levels).
+        out.into_iter().rev().collect()
     }
 }
 
@@ -248,5 +318,20 @@ mod tests {
         let a = a_poly();
         let pos = a.unsigned_modulo(64);
         assert_eq!(pos.val, vec![57, 0, 0, 3, 63, 6, 61, 5, 9, 59])
+    }
+
+    #[test]
+    fn decomposition_test() {
+        let a = a_poly();
+        let dec = a.clone().decompose(4, 2);
+
+        assert_eq!(dec[0].val, vec![-1, 0, 0, 1, -1, 0, -1, 1, 1, -1]);
+        assert_eq!(dec[1].val, vec![-1, 0, 0, 1, 0, 1, -1, 0, 0, 0]);
+        assert_eq!(dec[2].val, vec![-1, 0, 0, 0, 0, 1, 0, 1, 0, -1]);
+        assert_eq!(dec[3].val, vec![0, 0, 0, 0, 0, 0, 0, 0, 1, 0]);
+
+        let recomposed =
+            dec[0].clone() + dec[1].clone() * 2 + dec[2].clone() * 4 + dec[3].clone() * 8;
+        assert_eq!(recomposed.val, a.val);
     }
 }
