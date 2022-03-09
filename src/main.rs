@@ -1,49 +1,44 @@
 fn main() {
-    let t = 4;
-    let q = 256;
-    let std_dev = 3.2;
-    let dimension = 4;
-    let mut rng = rand::thread_rng();
+    let mut count = 0;
+    for _ in 0..1000 {
+        let q = 65536;
+        let t = 12;
+        let std_dev = 3.2;
+        let degree = 4;
+        let rlk_base = (q as f64).log2() as i64;
 
-    let secret_key = keys::SecretKey::generate(dimension, q, &mut rng);
-    let public_key = secret_key.public_key_gen(q, std_dev, &mut rng);
+        let mut rng = rand::thread_rng();
 
-    let msg_1 = vec![0, 1, 2, 3];
-    let plaintext_1 = plaintext::Plaintext::new(msg_1, t, q);
-    let ciphertext_1 = plaintext_1.encrypt(public_key.clone(), std_dev, &mut rng);
-    let decrypted_1 = ciphertext_1.decrypt(secret_key.clone());
-    assert_eq!(decrypted_1.poly.val, plaintext_1.poly.val);
+        let secret_key = SecretKey::generate(degree, &mut rng);
+        let public_key = secret_key.public_key_gen(q, std_dev, &mut rng);
+        let rlk_1 = secret_key.relinearization_key_gen_1(q, std_dev, &mut rng, rlk_base);
 
-    let msg_2 = vec![2, 3, 1, 0];
-    let plaintext_2 = plaintext::Plaintext::new(msg_2, t, q);
-    let ciphertext_2 = plaintext_2.encrypt(public_key, std_dev, &mut rng);
-    let decrypted_2 = ciphertext_2.decrypt(secret_key.clone());
-    assert_eq!(decrypted_2.poly.val, plaintext_2.poly.val);
+        let pt_1 = Plaintext::rand(degree, t, q, &mut rng);
+        let pt_2 = Plaintext::rand(degree, t, q, &mut rng);
+        let pt_3 = Plaintext::rand(degree, t, q, &mut rng);
+        let pt_4 = Plaintext::rand(degree, t, q, &mut rng);
 
-    // Homomorphic addition
-    let added_ciphertext = ciphertext_1.clone() + ciphertext_2.clone();
-    let decrypted_add = added_ciphertext.decrypt(secret_key.clone());
-    assert_eq!(
-        decrypted_add.poly.val,
-        (plaintext_1.poly.clone() + plaintext_2.poly.clone()).unsigned_modulo(t).val
-    );
+        let ct_1 = pt_1.encrypt(&public_key, std_dev, &mut rng);
+        let ct_2 = pt_2.encrypt(&public_key, std_dev, &mut rng);
+        let ct_3 = pt_3.encrypt(&public_key, std_dev, &mut rng);
+        let ct_4 = pt_4.encrypt(&public_key, std_dev, &mut rng);
 
-    // Homomoprhic multiplication setup
-    let _rlk_1 = secret_key.relinearization_key_gen_1(std_dev, &mut rng);
-    let _rlk_simple = secret_key.relinearization_key_gen_simple(std_dev, &mut rng);
-    let p = q.pow(3);
-    let std_dev_prime = std_dev * 2.0;
-    let rlk_2 = secret_key.relinearization_key_gen_2(std_dev_prime, &mut rng, p);
+        let expr_ct = ct_1.mul_1(ct_2, &rlk_1) + ct_3.mul_1(ct_4, &rlk_1);
+        let expr_pt = expr_ct.decrypt(&secret_key);
 
-    // Homomorphic multiplication
-    let mul_ciphertext = ciphertext_1.clone().mul_2(ciphertext_2.clone(), rlk_2);
-    println!("mul ciphertext: {:?}", mul_ciphertext);
-    let decrypted_mul = mul_ciphertext.decrypt(secret_key.clone());
-    println!("decrypted mul: {:?}", decrypted_mul.poly);
-    assert_eq!(
-        decrypted_mul.poly.val,
-        (plaintext_1.poly.clone() * plaintext_2.poly.clone()).unsigned_modulo(t).val
-    );
+        let expected_pt = (pt_1.poly.clone() * pt_2.poly.clone()
+            + pt_3.poly.clone() * pt_4.poly.clone())
+        .modulo(t, degree);
+        if expr_pt.poly == expected_pt {
+            println!(
+                "success: {:?} * {:?} + {:?} * {:?} = {:?}",
+                pt_1.poly, pt_2.poly, pt_3.poly, pt_4.poly, expr_pt.poly
+            );
+            count += 1;
+        }
+    }
+
+    println!("succeeded {:?}/1000 times", count);
 }
 
 mod ciphertext;

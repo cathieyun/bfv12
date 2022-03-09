@@ -1,123 +1,60 @@
+use std::cmp;
 use std::ops::{Add, Mul, Neg, Sub};
 
-#[derive(Clone, Debug)]
-pub struct Poly {
-    pub val: Vec<i64>,
-    pub dimension: usize,
-    pub q: i64,
-}
+#[derive(Clone, Debug, PartialEq)]
+pub struct Poly(Vec<i64>);
 
 /// TODO(cathie): also implement ops over &Poly, so we don't have to do unnecessary cloning.
+/// TODO(cathie): also implement Sum, so we can sum over an iterator of Polys.
+/// TODO(cathie): implement pretty print for polynomials
 
 impl Add<Poly> for Poly {
     type Output = Poly;
     fn add(self, other: Poly) -> Self::Output {
-        assert!(
-            self.dimension == other.dimension,
-            "Polynomial dimensions are not equal"
-        );
-        assert!(self.q == other.q, "Polynomial moduli are not equal");
-        let q = self.q;
+        let max_degree = cmp::max(self.degree(), other.degree());
 
-        let out_val = self
-            .val
-            .into_iter()
-            .zip(other.val.iter())
-            .map(|(self_i, other_i)| (self_i + other_i) % q)
+        let out_val = (0..max_degree)
+            .map(|i| {
+                let self_i = if i < self.degree() { self.0[i] } else { 0 };
+                let other_i = if i < other.degree() { other.0[i] } else { 0 };
+                self_i + other_i
+            })
             .collect();
-        Poly {
-            val: out_val,
-            dimension: self.dimension,
-            q,
-        }
+        Poly(out_val)
     }
 }
 
 impl Sub<Poly> for Poly {
     type Output = Poly;
     fn sub(self, other: Poly) -> Self::Output {
-        assert!(
-            self.dimension == other.dimension,
-            "Polynomial dimensions are not equal"
-        );
-        assert!(self.q == other.q, "Polynomial moduli are not equal");
-        let q = self.q;
+        let max_degree = cmp::max(self.degree(), other.degree());
 
-        let out_val = self
-            .val
-            .into_iter()
-            .zip(other.val.iter())
-            .map(|(self_i, other_i)| (self_i - other_i) % q)
+        let out_val = (0..max_degree)
+            .map(|i| {
+                let self_i = if i < self.degree() { self.0[i] } else { 0 };
+                let other_i = if i < other.degree() { other.0[i] } else { 0 };
+                self_i - other_i
+            })
             .collect();
-        Poly {
-            val: out_val,
-            dimension: self.dimension,
-            q,
-        }
+        Poly(out_val)
     }
 }
 
 impl Neg for Poly {
     type Output = Self;
     fn neg(mut self) -> Self::Output {
-        for v in self.val.iter_mut() {
-            *v = -*v
+        for v in self.0.iter_mut() {
+            *v = -*v;
         }
         self
-    }
-}
-
-impl Mul<Poly> for Poly {
-    type Output = Poly;
-    fn mul(self, other: Poly) -> Self::Output {
-        assert!(
-            self.dimension == other.dimension,
-            "Polynomial dimensions are not equal"
-        );
-        assert!(self.q == other.q, "Polynomial moduli are not equal");
-
-        let mut out_val = vec![0; self.dimension];
-        let degree = self.dimension - 1;
-        let q = self.q;
-
-        for (i, self_i) in self.val.iter().enumerate() {
-            for (j, other_j) in other.val.iter().enumerate() {
-                let target_degree = i + j;
-
-                // If the resulting coefficient is of degree <= N, add it to the output poly directly.
-                if target_degree <= degree {
-                    out_val[target_degree] = (out_val[target_degree] + self_i * other_j) % q;
-                }
-                // If the resulting coefficient is of degree >N, it wraps around (mod X^N + 1)
-                // so take the degree mod N, and subtract it from the output poly
-                else {
-                    out_val[target_degree % (degree + 1)] =
-                        (out_val[target_degree % (degree + 1)] - self_i * other_j) % q;
-                }
-            }
-        }
-        Poly {
-            val: out_val,
-            dimension: self.dimension,
-            q,
-        }
     }
 }
 
 impl Mul<i64> for Poly {
     type Output = Poly;
     fn mul(self, other: i64) -> Self::Output {
-        let q = self.q;
-        let out_val = self
-            .val
-            .into_iter()
-            .map(|self_i| (self_i * other) % q)
-            .collect();
-        Poly {
-            val: out_val,
-            dimension: self.dimension,
-            q,
-        }
+        let out_val = self.0.into_iter().map(|self_i| self_i * other).collect();
+        Poly(out_val)
     }
 }
 
@@ -125,48 +62,84 @@ impl Mul<i64> for Poly {
 impl Mul<f64> for Poly {
     type Output = Poly;
     fn mul(self, other: f64) -> Self::Output {
-        let q = self.q;
         let out_val = self
-            .val
+            .0
             .into_iter()
-            .map(|self_i| (self_i as f64 * other).round() as i64 % q)
+            .map(|self_i| (self_i as f64 * other).round() as i64)
             .collect();
-        Poly {
-            val: out_val,
-            dimension: self.dimension,
-            q,
+        Poly(out_val)
+    }
+}
+
+impl Mul<Poly> for Poly {
+    type Output = Poly;
+    fn mul(self, other: Poly) -> Self::Output {
+        let mut out_val = vec![0; self.0.len() + other.0.len() - 1];
+        for (i, self_i) in self.0.iter().enumerate() {
+            for (j, other_j) in other.0.iter().enumerate() {
+                let target_degree = i + j;
+                out_val[target_degree] += self_i * other_j;
+            }
         }
+        Poly(out_val)
     }
 }
 
 impl Poly {
-    pub fn empty(dimension: usize, q: i64) -> Poly {
-        Poly {
-            val: vec![0; dimension],
-            dimension,
-            q,
-        }
-    }
-    // Take polynomial mod t, for converting to the signed plaintext space
-    pub fn _modulo(mut self, modulus: i64) -> Poly {
-        for v in self.val.iter_mut() {
-            *v = *v % modulus
-        }
-        self
+    pub fn new(val: Vec<i64>) -> Poly {
+        Poly(val)
     }
 
-    // Add t to the polynomial and then take mod t, for converting to the unsigned plaintext space
-    pub fn unsigned_modulo(mut self, modulus: i64) -> Poly {
-        for v in self.val.iter_mut() {
-            *v = (*v + modulus) % modulus
+    pub fn degree(&self) -> usize {
+        self.0.len()
+    }
+
+    // Take polynomial (X^N + 1) and coefficients mod q
+    // N = degree, q = modulus
+    pub fn modulo(&self, modulus: i64, degree: usize) -> Poly {
+        let mut out_val = vec![0; degree];
+
+        // Take the polynomial mod (X^N + 1).
+        // 1. After a multiplication by X^{2N}, the polynomial is unchanged mod (X^N + 1).
+        //    Therefore, we can take the degree % 2N.
+        // 2. If degree % 2N > N, the coefficients should be negated and added to the degree % N.
+        // 3. If degree % 2N <= N, the coefficients should be added to the degree % 2N.
+        for (i, coeff) in self.0.iter().enumerate() {
+            // $ X^i == X^{i + j * 2N} mod (X^N + 1) for all j $
+            // So we can take the coeff degree mod 2N.
+            let reduced_i = i % (2 * degree);
+            if reduced_i >= degree {
+                out_val[reduced_i % degree] -= coeff;
+            } else {
+                out_val[reduced_i] += coeff;
+            }
         }
-        self
+
+        for coeff in out_val.iter_mut() {
+            *coeff = Poly::mod_coeff(*coeff, modulus);
+        }
+        Poly(out_val)
+    }
+
+    // Reduce a coefficient into the [-q/2, q/2) bounds.
+    fn mod_coeff(coeff: i64, q: i64) -> i64 {
+        // If we are working in [-q/2, q/2):
+        // if coeff >= q/2 {
+        //     return ((coeff + q/2) % q) - q/2;
+        // } else if coeff < -q/2 {
+        //     return ((coeff - q/2) % q) + q/2;
+        // }
+        // coeff
+
+        // If we are working in in [0, q):
+
+        (coeff % q + q) % q
     }
 
     // Decompose a polynomial to l levels, with each level base T, such that:
     // $ poly = sum_{i=0}^l poly^(i) T^i $ with $ poly^(i) \in R_T $
-    pub fn decompose(self, l: i64, base: i64) -> Vec<Poly> {
-        let mut mut_poly = self.val.clone();
+    pub fn decompose(self, l: usize, base: i64) -> Vec<Poly> {
+        let mut mut_poly = self.clone();
 
         // Iterate i: from highest to lowest level, starting with l
         let out_polys: Vec<Poly> = (0..l)
@@ -177,6 +150,7 @@ impl Poly {
 
                 // Iterate j: through the coefficients in poly, to decompose for level i
                 let dec_val_i: Vec<i64> = mut_poly
+                    .0
                     .iter_mut()
                     .map(|val_j| {
                         // Calculate how many times T^i divides the coefficient, to get decomposition
@@ -192,18 +166,14 @@ impl Poly {
                         int_div
                     })
                     .collect();
-                Poly {
-                    val: dec_val_i,
-                    dimension: self.dimension,
-                    q: self.q,
-                }
+                Poly(dec_val_i)
             })
             .collect();
         // We can't reverse within the original expression because the two "rev" calls cancel each other out
         // and we get the wrong decomposition answer (decomposing starting from the smallest levels).
         out_polys.into_iter().rev().collect()
     }
-
+    /*
     fn _decompose_i64(val: i64, l: i64, base: i64) -> Vec<i64> {
         let mut mut_val = val.clone();
         let out: Vec<i64> = (0..l)
@@ -224,7 +194,7 @@ impl Poly {
         // We can't reverse within the original expression because the two "rev" calls cancel each other out
         // and we get the wrong decomposition answer (decomposing starting from the smallest levels).
         out.into_iter().rev().collect()
-    }
+    }*/
 }
 
 #[cfg(test)]
@@ -232,18 +202,10 @@ mod tests {
     use crate::poly::Poly;
 
     fn a_poly() -> Poly {
-        Poly {
-            val: vec![-7, 0, 0, 3, -1, 6, -3, 5, 9, -5],
-            dimension: 10,
-            q: 256,
-        }
+        Poly(vec![-7, 0, 0, 3, -1, 6, -3, 5, 9, -5])
     }
     fn b_poly() -> Poly {
-        Poly {
-            val: vec![-1, -1, 0, 1, 0, -1, 1, 1, -1, -1],
-            dimension: 10,
-            q: 256,
-        }
+        Poly(vec![-1, -1, 0, 1, 0, -1, 1, 1, -1, -1])
     }
 
     #[test]
@@ -251,10 +213,12 @@ mod tests {
         let a = a_poly();
         let b = b_poly();
         let sum = a + b;
-        println!("sum: {:?}", sum.val);
-        assert_eq!(sum.val, vec![-8, -1, 0, 4, -1, 5, -2, 6, 8, -6]);
-        assert_eq!(sum.dimension, 10);
-        assert_eq!(sum.q, 256);
+        assert_eq!(sum.0, vec![-8, -1, 0, 4, -1, 5, -2, 6, 8, -6]);
+
+        // Test that vector addition still works with uneven vector lengths
+        let c = Poly(vec![3, -1, 6, -3]);
+        let sum_uneven = c + sum;
+        assert_eq!(sum_uneven.0, vec![-5, -2, 6, 1, -1, 5, -2, 6, 8, -6]);
     }
 
     #[test]
@@ -262,62 +226,70 @@ mod tests {
         let a = a_poly();
         let b = b_poly();
         let sub = a - b;
-        assert_eq!(sub.val, vec![-6, 1, 0, 2, -1, 7, -4, 4, 10, -4]);
-        assert_eq!(sub.dimension, 10);
-        assert_eq!(sub.q, 256);
+        assert_eq!(sub.0, vec![-6, 1, 0, 2, -1, 7, -4, 4, 10, -4]);
+
+        // Test that vector subtraction still works with uneven vector lengths
+        let c = Poly(vec![3, -1, 6, -3]);
+        let sub_uneven = c - sub;
+        assert_eq!(sub_uneven.0, vec![9, -2, 6, -5, 1, -7, 4, -4, -10, 4]);
     }
 
     #[test]
     fn neg_test() {
         let a = a_poly();
         let neg = -a;
-        assert_eq!(neg.val, vec![7, 0, 0, -3, 1, -6, 3, -5, -9, 5]);
-        assert_eq!(neg.dimension, 10);
-        assert_eq!(neg.q, 256);
-    }
-
-    #[test]
-    fn mul_poly_test() {
-        let a = Poly {
-            val: vec![4, 5, 0],
-            dimension: 3,
-            q: 256,
-        };
-        let b = Poly {
-            val: vec![7, 9, 0],
-            dimension: 3,
-            q: 256,
-        };
-        let mul = a * b;
-        assert_eq!(mul.val, vec![28, 71, 45]);
+        assert_eq!(neg.0, vec![7, 0, 0, -3, 1, -6, 3, -5, -9, 5]);
     }
 
     #[test]
     fn mul_const_i64_test() {
         let a = a_poly();
         let mul = a * 17;
-        assert_eq!(mul.val, vec![-119, 0, 0, 51, -17, 102, -51, 85, 153, -85]);
+        assert_eq!(mul.0, vec![-119, 0, 0, 51, -17, 102, -51, 85, 153, -85]);
     }
 
     #[test]
     fn mul_const_f64_test() {
         let a = a_poly();
         let mul = a * 3.7;
-        assert_eq!(mul.val, vec![-26, 0, 0, 11, -4, 22, -11, 19, 33, -19]);
+        assert_eq!(mul.0, vec![-26, 0, 0, 11, -4, 22, -11, 19, 33, -19]);
     }
 
     #[test]
-    fn modulo_test() {
-        let a = a_poly();
-        let modulo = a._modulo(4);
-        assert_eq!(modulo.val, vec![-3, 0, 0, 3, -1, 2, -3, 1, 1, -1]);
+    fn mul_poly_test() {
+        let a = Poly(vec![4, 5, 2]);
+        let b = Poly(vec![7, 9, 1]);
+        let mul = a * b;
+        assert_eq!(mul.0, vec![28, 71, 63, 23, 2]);
     }
 
     #[test]
-    fn unsigned_modulo_test() {
+    fn poly_modulo_test() {
         let a = a_poly();
-        let pos = a.unsigned_modulo(64);
-        assert_eq!(pos.val, vec![57, 0, 0, 3, 63, 6, 61, 5, 9, 59])
+        let b = b_poly();
+        let mul = a * b;
+        assert_eq!(
+            mul.0,
+            vec![7, 7, 0, -10, -2, 2, -7, -10, -4, 4, 6, 14, -9, -12, 16, 2, -19, -4, 5]
+        );
+        let mod_degree_2 = mul.modulo(16, 2);
+        assert_eq!(mod_degree_2.0, vec![1, 1]);
+        let mod_degree_4 = mul.modulo(16, 4);
+        assert_eq!(mod_degree_4.0, vec![11, 1, 2, 12]);
+        let mod_degree_8 = mul.modulo(16, 8);
+        assert_eq!(mod_degree_8.0, vec![8, 15, 15, 8, 7, 14, 9, 4]);
+        let mod_degree_16 = mul.modulo(16, 16);
+        assert_eq!(
+            mod_degree_16.0,
+            vec![10, 11, 11, 6, 14, 2, 9, 6, 12, 4, 6, 14, 7, 4, 0, 2]
+        );
+    }
+
+    #[test]
+    fn coeff_modulo_test() {
+        let a = a_poly();
+        let modulo = a.modulo(4, 10);
+        assert_eq!(modulo.0, vec![1, 0, 0, 3, 3, 2, 1, 1, 1, 3]);
     }
 
     #[test]
@@ -325,13 +297,13 @@ mod tests {
         let a = a_poly();
         let dec = a.clone().decompose(4, 2);
 
-        assert_eq!(dec[0].val, vec![-1, 0, 0, 1, -1, 0, -1, 1, 1, -1]);
-        assert_eq!(dec[1].val, vec![-1, 0, 0, 1, 0, 1, -1, 0, 0, 0]);
-        assert_eq!(dec[2].val, vec![-1, 0, 0, 0, 0, 1, 0, 1, 0, -1]);
-        assert_eq!(dec[3].val, vec![0, 0, 0, 0, 0, 0, 0, 0, 1, 0]);
+        assert_eq!(dec[0].0, vec![-1, 0, 0, 1, -1, 0, -1, 1, 1, -1]);
+        assert_eq!(dec[1].0, vec![-1, 0, 0, 1, 0, 1, -1, 0, 0, 0]);
+        assert_eq!(dec[2].0, vec![-1, 0, 0, 0, 0, 1, 0, 1, 0, -1]);
+        assert_eq!(dec[3].0, vec![0, 0, 0, 0, 0, 0, 0, 0, 1, 0]);
 
         let recomposed =
             dec[0].clone() + dec[1].clone() * 2 + dec[2].clone() * 4 + dec[3].clone() * 8;
-        assert_eq!(recomposed.val, a.val);
+        assert_eq!(recomposed, a);
     }
 }

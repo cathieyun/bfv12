@@ -7,6 +7,7 @@ use rand::{CryptoRng, RngCore};
 #[derive(Debug)]
 pub struct Plaintext {
     pub poly: Poly,
+    pub q: i64,
     pub t: i64,
 }
 
@@ -15,40 +16,50 @@ impl Plaintext {
         // The plaintext space is taken as R_t for some integer t > 1.
         assert!(t > 1);
         Plaintext {
-            poly: Poly {
-                dimension: msg.len(),
-                val: msg,
-                q,
-            },
+            poly: Poly::new(msg),
+            q,
             t,
         }
     }
 
-    // TODO(cathie): change this to use &PublicKey, to prevent unnecessary cloning
+    pub fn rand<T: RngCore + CryptoRng>(
+        degree: usize,
+        t: i64,
+        q: i64,
+        rng: &mut T
+    ) -> Plaintext {
+        assert!(t > 1);
+        Plaintext {
+            poly: random_source::get_uniform(t, degree, rng),
+            q,
+            t,
+        }
+    }
+
     pub fn encrypt<T: RngCore + CryptoRng>(
         &self,
-        pub_key: PublicKey,
+        pub_key: &PublicKey,
         std_dev: f64,
         rng: &mut T,
     ) -> Ciphertext {
-        assert!(self.poly.q == pub_key.p_0.q);
-        assert!(pub_key.p_0.q == pub_key.p_1.q);
-        let q = self.poly.q;
-        let dimension = self.poly.dimension;
+        assert_eq!(self.poly.degree(), pub_key.p_0.degree());
+        let q = self.q;
+        let degree = self.poly.degree();
         let m = self.poly.clone();
 
-        let u = random_source::get_uniform(2, dimension, q, rng);
-        let e_1 = random_source::get_gaussian(std_dev, dimension, q, rng);
-        let e_2 = random_source::get_gaussian(std_dev, dimension, q, rng);
+        let u = random_source::get_uniform(2, degree, rng);
+        let e_1 = random_source::get_gaussian(std_dev, degree, rng);
+        let e_2 = random_source::get_gaussian(std_dev, degree, rng);
 
         let delta = (q as f64 / self.t as f64).floor() as i64;
 
-        let c_0 = pub_key.p_0 * u.clone() + e_1 + m * delta;
-        let c_1 = pub_key.p_1 * u + e_2;
+        let c_0 = (pub_key.p_0.clone() * u.clone() + e_1 + m * delta).modulo(q, degree);
+        let c_1 = (pub_key.p_1.clone() * u + e_2).modulo(q, degree);
 
         Ciphertext {
             c_0,
             c_1,
+            q: self.q,
             t: self.t,
         }
     }
