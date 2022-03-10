@@ -11,11 +11,10 @@ The following example shows how to:
 4. Decrypt ciphertexts
 
 ```rust
-# use rand::SeedableRng;
-# 
-# // Generate an RNG. Any Rng that imlements RngCore + CryptoRng can be used.
-# let mut rng = rand::rngs::StdRng::seed_from_u64(18);
-# 
+use rand::SeedableRng;
+// Generate an RNG. Any Rng that imlements RngCore + CryptoRng can be used.
+let mut rng = rand::rngs::StdRng::seed_from_u64(18);
+
 use bfv12::{SecretKey, Plaintext};
 
 // Set the parameters for this instantiation of B/FV

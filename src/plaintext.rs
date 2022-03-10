@@ -54,6 +54,14 @@ impl Plaintext {
         }
     }
 
+    /// Return the polynomial that represents the encoded messeage
+    ///
+    /// ```rust
+    /// use bfv12::Plaintext;
+    /// let pt = Plaintext::new(vec![0, 1, 2, 3], 4);
+    /// let pt_poly = pt.poly();
+    /// assert_eq!(pt_poly.val(), vec![0, 1, 2, 3])
+    /// ```
     pub fn poly(&self) -> Poly {
         self.poly.clone()
     }

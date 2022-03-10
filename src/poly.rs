@@ -149,6 +149,10 @@ impl Poly {
         self.0.len()
     }
 
+    pub fn val(&self) -> Vec<i64> {
+        self.0.clone()
+    }
+
     // Reduce a coefficient into the [0, q) bounds.
     fn mod_coeff(coeff: i64, q: i64) -> i64 {
         (coeff % q + q) % q
