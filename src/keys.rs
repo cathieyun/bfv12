@@ -2,40 +2,92 @@ use super::poly::Poly;
 use super::random_source;
 use rand::{CryptoRng, RngCore};
 
+/// A BFV12 Secret Key
 #[derive(Clone, Debug)]
 pub struct SecretKey {
+    ///`s <- R_2`
     pub poly: Poly,
 }
 
+/// A BFV12 Public Key
+///
+/// * `p_0` = `[-(a * s + e)]_q`
+/// * `p_1` = `a`
+/// * `q` = ciphertext modulus
 #[derive(Clone, Debug)]
 pub struct PublicKey {
-    pub p_0: Poly,
-    pub p_1: Poly,
+    pub(crate) p_0: Poly,
+    pub(crate) p_1: Poly,
+    pub(crate) q: i64,
 }
 
+/// A BFV12 Relinearization Key, Version 1
+///
+/// * `val` = `[ ( [-(a_i * s + e_i) + T^i * s^2]_q, a_i) : i \in (0..l)]`
+/// * `T` = the decomposition base used for relinearization
+/// * `l` = `floor(log_t(q))`, the number of levels to decompose
 #[derive(Clone, Debug)]
 pub struct RelinearizationKey1 {
-    pub val: Vec<(Poly, Poly)>,
-    pub base: i64,
-    pub l: usize,
+    pub(crate) val: Vec<(Poly, Poly)>,
+    pub(crate) base: i64,
+    pub(crate) l: usize,
 }
 
+/// A BFV12 Relinearization Key, Version 2
+///
+/// * `rlk_0` = `([-(a * s + e) + p * s^2]_{p*q})`
+/// * `rlk_1` = `a`
+/// * `p` = the amount to scale the modulus, during modulus switching
 #[derive(Clone, Debug)]
 pub struct RelinearizationKey2 {
-    pub rlk_0: Poly,
-    pub rlk_1: Poly,
-    pub p: i64,
+    pub(crate) rlk_0: Poly,
+    pub(crate) rlk_1: Poly,
+    pub(crate) p: i64,
 }
 
 impl SecretKey {
-    // Generate a secret key by sampling the coefficients of s uniformly
-    // from R_2, which is the set {-1, 0, 1}.
+    /// Generate a secret key by sampling the coefficients of s uniformly
+    /// from R_2, which in this implementation is the set {0, 1}.
+    ///
+    /// * `degree`: the polynomial degree of the secret key
+    /// * `rng`: the RNG used to generate randomness
+    ///
+    /// ```rust
+    /// # extern crate rand;
+    /// # use rand::SeedableRng;
+    /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
+    /// #
+    /// use bfv::SecretKey;
+    ///
+    /// let degree = 4;
+    /// let secret_key = SecretKey::generate(degree, &mut rng);
+    /// ```
     pub fn generate<T: RngCore + CryptoRng>(degree: usize, rng: &mut T) -> SecretKey {
         SecretKey {
             poly: random_source::get_uniform(2, degree, rng),
         }
     }
 
+    /// Generate a public key from a secret key.
+    ///
+    /// * `q`: the ciphertext modulus
+    /// * `std_dev`: the standard deviation for error generation
+    /// * `rng`: the RNG used to generate randomness
+    ///
+    /// ```rust
+    /// # extern crate rand;
+    /// # use rand::SeedableRng;
+    /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
+    /// #
+    /// use bfv::SecretKey;
+    ///
+    /// let degree = 4;
+    /// let std_dev = 3.2;
+    /// let q = 65536;
+    ///
+    /// let secret_key = SecretKey::generate(degree, &mut rng);
+    /// let public_key = secret_key.public_key_gen(q, std_dev, &mut rng);
+    /// ```
     pub fn public_key_gen<T: RngCore + CryptoRng>(
         &self,
         q: i64,
@@ -50,10 +102,32 @@ impl SecretKey {
         let p_1 = a.clone();
         let p_0 = (-(a.clone() * s.clone() + e)) % (q, degree);
 
-        PublicKey { p_0, p_1 }
+        PublicKey { p_0, p_1, q }
     }
 
-    pub fn relinearization_key_gen_1<T: RngCore + CryptoRng>(
+    /// Generate a relinearization key, using the approach in Version 1
+    ///
+    /// * `q`: the ciphertext modulus
+    /// * `std_dev`: the standard deviation for error generation
+    /// * `rng`: the RNG used to generate randomness
+    /// * `base`: the decomposition base used for relinearization
+    ///
+    /// ```rust
+    /// # extern crate rand;
+    /// # use rand::SeedableRng;
+    /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
+    /// #
+    /// use bfv::SecretKey;
+    ///
+    /// let degree = 4;
+    /// let std_dev = 3.2;
+    /// let q = 65536;
+    /// let rlk_base = (q as f64).log2() as i64;
+    ///
+    /// let secret_key = SecretKey::generate(degree, &mut rng);
+    /// let relin_key_1 = secret_key.relin_key_gen_1(q, std_dev, &mut rng, rlk_base);
+    /// ```
+    pub fn relin_key_gen_1<T: RngCore + CryptoRng>(
         &self,
         q: i64,
         std_dev: f64,
@@ -79,7 +153,28 @@ impl SecretKey {
         RelinearizationKey1 { val, base, l }
     }
 
-    pub fn relinearization_key_gen_2<T: RngCore + CryptoRng>(
+    /// Generate a relinearization key, using the approach in Version 2
+    /// * `q`: the ciphertext modulus
+    /// * `std_dev`: the standard deviation for error generation
+    /// * `rng`: the RNG used to generate randomness
+    /// * `p`: the amount to scale the modulus, during modulus switching
+    ///
+    /// ```rust
+    /// # extern crate rand;
+    /// # use rand::SeedableRng;
+    /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
+    /// #
+    /// use bfv::SecretKey;
+    ///
+    /// let degree = 4;
+    /// let std_dev = 3.2;
+    /// let q = 65536;
+    /// let p = 2_i64.pow(13) * q;
+    ///
+    /// let secret_key = SecretKey::generate(degree, &mut rng);
+    /// let relin_key_2 = secret_key.relin_key_gen_2(q, std_dev, &mut rng, p);
+    /// ```
+    pub fn relin_key_gen_2<T: RngCore + CryptoRng>(
         &self,
         q: i64,
         std_dev: f64,
@@ -93,10 +188,6 @@ impl SecretKey {
         let e = random_source::get_gaussian(std_dev, degree, rng);
         let rlk_0 = (-(a.clone() * s.clone() + e) + s.clone() * s.clone() * p) % (p * q, degree);
 
-        RelinearizationKey2 {
-            rlk_0,
-            rlk_1: a,
-            p,
-        }
+        RelinearizationKey2 { rlk_0, rlk_1: a, p }
     }
 }

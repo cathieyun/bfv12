@@ -1,12 +1,8 @@
-use std::cmp;
-use std::ops::{Add, Mul, Neg, Sub, Div, Rem};
+use std::ops::{Add, Div, Mul, Neg, Rem, Sub};
+use std::{cmp, fmt};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Poly(Vec<i64>);
-
-/// TODO(cathie): also implement ops over &Poly, so we don't have to do unnecessary cloning.
-/// TODO(cathie): also implement Sum, so we can sum over an iterator of Polys.
-/// TODO(cathie): implement pretty print for polynomials
 
 impl Add<Poly> for Poly {
     type Output = Poly;
@@ -125,6 +121,25 @@ impl Rem<(i64, usize)> for Poly {
     }
 }
 
+impl fmt::Display for Poly {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if self.0.is_empty() {
+            write!(f, "0")
+        } else {
+            for (power, coeff) in self.0.iter().enumerate() {
+                if *coeff != 0 {
+                    match power {
+                        0 => write!(f, "{}", coeff)?,
+                        1 => write!(f, " + {}*X", coeff)?,
+                        _ => write!(f, " + {}*X^{}", coeff, power)?,
+                    }
+                }
+            }
+            Ok(())
+        }
+    }
+}
+
 impl Poly {
     pub fn new(val: Vec<i64>) -> Poly {
         Poly(val)
@@ -134,17 +149,8 @@ impl Poly {
         self.0.len()
     }
 
-    // Reduce a coefficient into the [-q/2, q/2) bounds.
+    // Reduce a coefficient into the [0, q) bounds.
     fn mod_coeff(coeff: i64, q: i64) -> i64 {
-        // If we are working in [-q/2, q/2):
-        // if coeff >= q/2 {
-        //     return ((coeff + q/2) % q) - q/2;
-        // } else if coeff < -q/2 {
-        //     return ((coeff - q/2) % q) + q/2;
-        // }
-        // coeff
-
-        // If we are working in in [0, q):
         (coeff % q + q) % q
     }
 
@@ -185,28 +191,6 @@ impl Poly {
         // and we get the wrong decomposition answer (decomposing starting from the smallest levels).
         out_polys.into_iter().rev().collect()
     }
-    /*
-    fn _decompose_i64(val: i64, l: i64, base: i64) -> Vec<i64> {
-        let mut mut_val = val.clone();
-        let out: Vec<i64> = (0..l)
-            .rev()
-            .map(|i| {
-                let base_i = base.pow(i as u32);
-                // Calcualte how many times base^i divides the value
-                let fl_div = (mut_val as f64) / (base_i as f64);
-                let int_div = if fl_div > 0.0 {
-                    fl_div.floor()
-                } else {
-                    fl_div.ceil()
-                } as i64;
-                mut_val -= int_div * base_i;
-                int_div
-            })
-            .collect();
-        // We can't reverse within the original expression because the two "rev" calls cancel each other out
-        // and we get the wrong decomposition answer (decomposing starting from the smallest levels).
-        out.into_iter().rev().collect()
-    }*/
 }
 
 #[cfg(test)]
