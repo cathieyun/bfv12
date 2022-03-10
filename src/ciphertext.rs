@@ -135,7 +135,7 @@ impl Ciphertext {
 /// # let std_dev = 3.2;  // Standard deviation for generating the error
 /// # let degree = 4;     // Degree of polynomials used for encoding and encrypting messages
 /// #
-/// # // Generate a seeded RNG. Any Rng that imlements RngCore + CryptoRng can be used.
+/// # // Generate a seeded RNG. Any Rng that implements RngCore + CryptoRng can be used.
 /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
 /// #
 /// let secret_key = SecretKey::generate(degree, &mut rng);
@@ -180,7 +180,7 @@ impl Add<Ciphertext> for Ciphertext {
 /// # let std_dev = 3.2;  // Standard deviation for generating the error
 /// # let degree = 4;     // Degree of polynomials used for encoding and encrypting messages
 /// #
-/// # // Generate a seeded RNG. Any Rng that imlements RngCore + CryptoRng can be used.
+/// # // Generate a seeded RNG. Any Rng that implements RngCore + CryptoRng can be used.
 /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
 /// #
 /// let secret_key = SecretKey::generate(degree, &mut rng);
@@ -225,7 +225,7 @@ impl Sub<Ciphertext> for Ciphertext {
 /// # let std_dev = 3.2;  // Standard deviation for generating the error
 /// # let degree = 4;     // Degree of polynomials used for encoding and encrypting messages
 /// #
-/// # // Generate a seeded RNG. Any Rng that imlements RngCore + CryptoRng can be used.
+/// # // Generate a seeded RNG. Any Rng that implements RngCore + CryptoRng can be used.
 /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
 /// #
 /// let secret_key = SecretKey::generate(degree, &mut rng);
@@ -269,7 +269,7 @@ impl Neg for Ciphertext {
 /// # let degree = 4;     // Degree of polynomials used for encoding and encrypting messages
 /// # let rlk_base = (q as f64).log2() as i64; // The base for decomposition during relinearization
 /// #
-/// # // Generate a seeded RNG. Any Rng that imlements RngCore + CryptoRng can be used.
+/// # // Generate a seeded RNG. Any Rng that implements RngCore + CryptoRng can be used.
 /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
 /// #
 /// let secret_key = SecretKey::generate(degree, &mut rng);
@@ -317,7 +317,7 @@ impl Mul<(Ciphertext, &RelinearizationKey1)> for Ciphertext {
 /// # let std_dev = 3.2;  // Standard deviation for generating the error
 /// # let degree = 4;     // Degree of polynomials used for encoding and encrypting messages
 /// #
-/// # // Generate a seeded RNG. Any Rng that imlements RngCore + CryptoRng can be used.
+/// # // Generate a seeded RNG. Any Rng that implements RngCore + CryptoRng can be used.
 /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
 /// #
 /// let secret_key = SecretKey::generate(degree, &mut rng);

@@ -12,7 +12,7 @@ The following example shows how to:
 
 ```rust
 use rand::SeedableRng;
-// Generate an RNG. Any Rng that imlements RngCore + CryptoRng can be used.
+// Generate an RNG. Any Rng that implements RngCore + CryptoRng can be used.
 let mut rng = rand::rngs::StdRng::seed_from_u64(18);
 
 use bfv12::{SecretKey, Plaintext};

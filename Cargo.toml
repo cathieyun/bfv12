@@ -6,7 +6,7 @@ readme = "README.md"
 license = "MIT"
 repository = "https://github.com/cathieyun/bfv"
 categories = ["cryptography"]
-keywords = ["cryptography", "crypto", "homomorphic encryption", "FHE"]
+keywords = ["cryptography", "crypto", "encryption", "FHE"]
 description = "A pure-Rust implementation of B/FV homomorphic encryption"
 edition = "2018"
 
