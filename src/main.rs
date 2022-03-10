@@ -12,6 +12,7 @@ fn main() {
         let secret_key = SecretKey::generate(degree, &mut rng);
         let public_key = secret_key.public_key_gen(q, std_dev, &mut rng);
         let rlk_1 = secret_key.relinearization_key_gen_1(q, std_dev, &mut rng, rlk_base);
+        let rlk_2 = secret_key.relinearization_key_gen_2(q, std_dev, &mut rng, q * 100);
 
         let pt_1 = Plaintext::rand(degree, t, q, &mut rng);
         let pt_2 = Plaintext::rand(degree, t, q, &mut rng);
@@ -23,12 +24,11 @@ fn main() {
         let ct_3 = pt_3.encrypt(&public_key, std_dev, &mut rng);
         let ct_4 = pt_4.encrypt(&public_key, std_dev, &mut rng);
 
-        let expr_ct = ct_1.mul_1(ct_2, &rlk_1) + ct_3.mul_1(ct_4, &rlk_1);
+        let expr_ct = ct_1 * (ct_2, &rlk_1) + ct_3 * (ct_4, &rlk_1);
         let expr_pt = expr_ct.decrypt(&secret_key);
 
         let expected_pt = (pt_1.poly.clone() * pt_2.poly.clone()
-            + pt_3.poly.clone() * pt_4.poly.clone())
-        .modulo(t, degree);
+            + pt_3.poly.clone() * pt_4.poly.clone()) % (t, degree);
         if expr_pt.poly == expected_pt {
             println!(
                 "success: {:?} * {:?} + {:?} * {:?} = {:?}",

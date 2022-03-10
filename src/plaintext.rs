@@ -53,8 +53,8 @@ impl Plaintext {
 
         let delta = (q as f64 / self.t as f64).floor() as i64;
 
-        let c_0 = (pub_key.p_0.clone() * u.clone() + e_1 + m * delta).modulo(q, degree);
-        let c_1 = (pub_key.p_1.clone() * u + e_2).modulo(q, degree);
+        let c_0 = (pub_key.p_0.clone() * u.clone() + e_1 + m * delta) % (q, degree);
+        let c_1 = (pub_key.p_1.clone() * u + e_2) % (q, degree);
 
         Ciphertext {
             c_0,

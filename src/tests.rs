@@ -16,7 +16,7 @@ mod tests {
 
         let decrypted = ciphertext.decrypt(&secret_key);
 
-        assert_eq!(decrypted.poly, plaintext.poly.modulo(t, degree));
+        assert_eq!(decrypted.poly, plaintext.poly % (t, degree));
     }
 
     #[test]
@@ -38,16 +38,16 @@ mod tests {
         let plaintext_1 = Plaintext::new(msg_1, t, q);
         let ciphertext_1 = plaintext_1.encrypt(&public_key, std_dev, &mut rng);
         let decrypted_1 = ciphertext_1.decrypt(&secret_key);
-        assert_eq!(decrypted_1.poly, plaintext_1.poly.clone().modulo(t, degree));
+        assert_eq!(decrypted_1.poly, plaintext_1.poly.clone() % (t, degree));
 
         let plaintext_2 = Plaintext::new(msg_2, t, q);
         let ciphertext_2 = plaintext_2.encrypt(&public_key, std_dev, &mut rng);
         let decrypted_2 = ciphertext_2.decrypt(&secret_key);
-        assert_eq!(decrypted_2.poly, plaintext_2.poly.clone().modulo(t, degree));
+        assert_eq!(decrypted_2.poly, plaintext_2.poly.clone() % (t, degree));
 
         let added_ciphertext = ciphertext_1 + ciphertext_2;
         let decrypted_add = added_ciphertext.decrypt(&secret_key);
-        let expected_add = (plaintext_1.poly + plaintext_2.poly).modulo(t, degree);
+        let expected_add = (plaintext_1.poly + plaintext_2.poly) % (t, degree);
         assert_eq!(decrypted_add.poly, expected_add);
     }
 
@@ -87,11 +87,11 @@ mod tests {
         let s = secret_key.poly.clone();
         let delta_inv = t as f64 / q as f64;
         let raw = c_0.clone() + c_1.clone() * s.clone() + c_2.clone() * s.clone() * s.clone();
-        let decrypted_mul = (raw * delta_inv).modulo(t, degree);
+        let decrypted_mul = (raw * delta_inv) % (t, degree);
 
         assert_eq!(
             decrypted_mul,
-            (plaintext_1.poly * plaintext_2.poly).modulo(t, degree)
+            (plaintext_1.poly * plaintext_2.poly) % (t, degree)
         );
     }
 
@@ -125,11 +125,11 @@ mod tests {
 
         // Homomorphic multiplication with relinearization
         let rlk_1 = secret_key.relinearization_key_gen_1(q, std_dev, &mut rng, base);
-        let mul_ciphertext = ciphertext_1.clone().mul_1(ciphertext_2.clone(), &rlk_1);
+        let mul_ciphertext = ciphertext_1.clone() * (ciphertext_2.clone(), &rlk_1);
         let decrypted_mul = mul_ciphertext.decrypt(&secret_key);
         assert_eq!(
             decrypted_mul.poly,
-            (plaintext_1.poly.clone() * plaintext_2.poly.clone()).modulo(t, degree)
+            (plaintext_1.poly.clone() * plaintext_2.poly.clone()) % (t, degree)
         );
     }
 
@@ -189,6 +189,65 @@ mod tests {
         }
     }
 
+    fn relin_2_mul_helper(
+        msg_1: Vec<i64>,
+        msg_2: Vec<i64>,
+        t: i64,
+        q: i64,
+        std_dev: f64,
+        p: i64,
+    ) {
+        let degree = msg_1.len();
+        let mut rng = rand::rngs::StdRng::seed_from_u64(22);
+
+        let secret_key = SecretKey::generate(degree, &mut rng);
+        let public_key = secret_key.public_key_gen(q, std_dev, &mut rng);
+
+        let plaintext_1 = Plaintext::new(msg_1, t, q);
+        let ciphertext_1 = plaintext_1.encrypt(&public_key, std_dev, &mut rng);
+        let plaintext_2 = Plaintext::new(msg_2, t, q);
+        let ciphertext_2 = plaintext_2.encrypt(&public_key, std_dev, &mut rng);
+
+        // Homomorphic multiplication with relinearization
+        let rlk_2 = secret_key.relinearization_key_gen_2(q, std_dev, &mut rng, p);
+        let mul_ciphertext = ciphertext_1.clone() * (ciphertext_2.clone(), &rlk_2);
+        let decrypted_mul = mul_ciphertext.decrypt(&secret_key);
+        assert_eq!(
+            decrypted_mul.poly,
+            (plaintext_1.poly.clone() * plaintext_2.poly.clone()) % (t, degree)
+        );
+    }
+
+    // Test that ciphertext multiplication using relinearization Version #2 encrypt/decrypts correctly
+    #[test]
+    fn relin_2_mul_test() {
+        let q = 65536;
+        // Technically p should be >= q^3 for security (see paper discussion on Relinearization Version 2),
+        // but setting p = q^3 results in an overflow when taking p * q so we will test with a smaller p.
+        let p = 2_i64.pow(13) * q;
+        let std_dev = 2.0;
+
+        for t in vec![4, 8, 16, 32].iter() {
+            relin_2_mul_helper(vec![0, 1], vec![0, 0], *t, q, std_dev, p);
+            relin_2_mul_helper(
+                vec![3, 2, 1, 0],
+                vec![1, 2, 3, 4],
+                *t,
+                q,
+                std_dev,
+                p,
+            );
+            relin_2_mul_helper(
+                vec![0, 1, 2, 3, 0, 1, 2, 3],
+                vec![3, 2, 1, 0, 3, 2, 1, 0],
+                *t,
+                q,
+                std_dev,
+                p,
+            );
+        }
+    }
+
     #[test]
     fn end_to_end_test() {
         for _ in 0..1000 {
@@ -197,7 +256,7 @@ mod tests {
             let std_dev = 3.2;
             let degree = 4;
             let rlk_base = (q as f64).log2() as i64;
-            let mut rng = rand::rngs::StdRng::seed_from_u64(22);
+            let mut rng = rand::rngs::StdRng::seed_from_u64(23);
 
             let secret_key = SecretKey::generate(degree, &mut rng);
             let public_key = secret_key.public_key_gen(q, std_dev, &mut rng);
@@ -213,10 +272,10 @@ mod tests {
             let ct_3 = pt_3.encrypt(&public_key, std_dev, &mut rng);
             let ct_4 = pt_4.encrypt(&public_key, std_dev, &mut rng);
 
-            let expr_ct = ct_1.mul_1(ct_2, &rlk_1) + ct_3.mul_1(ct_4, &rlk_1);
+            let expr_ct = ct_1 * (ct_2, &rlk_1) + ct_3 * (ct_4, &rlk_1);
             let expr_pt = expr_ct.decrypt(&secret_key);
 
-            let expected_pt = (pt_1.poly * pt_2.poly + pt_3.poly * pt_4.poly).modulo(t, degree);
+            let expected_pt = (pt_1.poly * pt_2.poly + pt_3.poly * pt_4.poly) % (t, degree);
             assert_eq!(expr_pt.poly, expected_pt);
         }
     }

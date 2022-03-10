@@ -1,5 +1,5 @@
 use std::cmp;
-use std::ops::{Add, Mul, Neg, Sub};
+use std::ops::{Add, Mul, Neg, Sub, Div, Rem};
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Poly(Vec<i64>);
@@ -58,7 +58,7 @@ impl Mul<i64> for Poly {
     }
 }
 
-// Multiply by a float (f64) and taking the result mod q, rounding to the nearest integer.
+// Multiply by a float (f64) and round to the nearest integer.
 impl Mul<f64> for Poly {
     type Output = Poly;
     fn mul(self, other: f64) -> Self::Output {
@@ -68,6 +68,15 @@ impl Mul<f64> for Poly {
             .map(|self_i| (self_i as f64 * other).round() as i64)
             .collect();
         Poly(out_val)
+    }
+}
+
+// Divide by a float (f64) and round to the nearest integer.
+impl Div<f64> for Poly {
+    type Output = Poly;
+    fn div(self, other: f64) -> Self::Output {
+        let other_inv = 1.0 / other;
+        self * other_inv
     }
 }
 
@@ -85,18 +94,11 @@ impl Mul<Poly> for Poly {
     }
 }
 
-impl Poly {
-    pub fn new(val: Vec<i64>) -> Poly {
-        Poly(val)
-    }
-
-    pub fn degree(&self) -> usize {
-        self.0.len()
-    }
-
-    // Take polynomial (X^N + 1) and coefficients mod q
-    // N = degree, q = modulus
-    pub fn modulo(&self, modulus: i64, degree: usize) -> Poly {
+impl Rem<(i64, usize)> for Poly {
+    type Output = Poly;
+    fn rem(self, modulus: (i64, usize)) -> Self::Output {
+        let coeff_mod = modulus.0;
+        let degree = modulus.1;
         let mut out_val = vec![0; degree];
 
         // Take the polynomial mod (X^N + 1).
@@ -115,10 +117,21 @@ impl Poly {
             }
         }
 
+        // Take each coefficient % coeff_mod
         for coeff in out_val.iter_mut() {
-            *coeff = Poly::mod_coeff(*coeff, modulus);
+            *coeff = Poly::mod_coeff(*coeff, coeff_mod)
         }
         Poly(out_val)
+    }
+}
+
+impl Poly {
+    pub fn new(val: Vec<i64>) -> Poly {
+        Poly(val)
+    }
+
+    pub fn degree(&self) -> usize {
+        self.0.len()
     }
 
     // Reduce a coefficient into the [-q/2, q/2) bounds.
@@ -132,7 +145,6 @@ impl Poly {
         // coeff
 
         // If we are working in in [0, q):
-
         (coeff % q + q) % q
     }
 
@@ -272,13 +284,13 @@ mod tests {
             mul.0,
             vec![7, 7, 0, -10, -2, 2, -7, -10, -4, 4, 6, 14, -9, -12, 16, 2, -19, -4, 5]
         );
-        let mod_degree_2 = mul.modulo(16, 2);
+        let mod_degree_2 = mul.clone() % (16, 2);
         assert_eq!(mod_degree_2.0, vec![1, 1]);
-        let mod_degree_4 = mul.modulo(16, 4);
+        let mod_degree_4 = mul.clone() % (16, 4);
         assert_eq!(mod_degree_4.0, vec![11, 1, 2, 12]);
-        let mod_degree_8 = mul.modulo(16, 8);
+        let mod_degree_8 = mul.clone() % (16, 8);
         assert_eq!(mod_degree_8.0, vec![8, 15, 15, 8, 7, 14, 9, 4]);
-        let mod_degree_16 = mul.modulo(16, 16);
+        let mod_degree_16 = mul.clone() % (16, 16);
         assert_eq!(
             mod_degree_16.0,
             vec![10, 11, 11, 6, 14, 2, 9, 6, 12, 4, 6, 14, 7, 4, 0, 2]
@@ -288,7 +300,7 @@ mod tests {
     #[test]
     fn coeff_modulo_test() {
         let a = a_poly();
-        let modulo = a.modulo(4, 10);
+        let modulo = a % (4, 10);
         assert_eq!(modulo.0, vec![1, 0, 0, 3, 3, 2, 1, 1, 1, 3]);
     }
 

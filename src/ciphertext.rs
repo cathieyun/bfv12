@@ -1,7 +1,7 @@
-use super::keys::{RelinearizationKey1, SecretKey};
+use super::keys::{RelinearizationKey1, RelinearizationKey2, SecretKey};
 use super::plaintext::Plaintext;
 use super::poly::Poly;
-use std::ops::{Add, Neg, Sub};
+use std::ops::{Add, Neg, Sub, Mul};
 
 #[derive(Clone, Debug)]
 pub struct Ciphertext {
@@ -17,8 +17,8 @@ impl Ciphertext {
         let degree = s.degree();
 
         let delta_inv = self.t as f64 / self.q as f64;
-        let raw = (self.c_0.clone() + self.c_1.clone() * s.clone()).modulo(self.q, degree);
-        let poly = (raw * delta_inv).modulo(self.t, degree);
+        let raw = (self.c_0.clone() + self.c_1.clone() * s.clone()) % (self.q, degree);
+        let poly = (raw * delta_inv) % (self.t, degree);
 
         Plaintext {
             poly,
@@ -40,17 +40,11 @@ impl Ciphertext {
         let out_2_raw = self.c_1.clone() * other.c_1.clone();
 
         let delta_inv = self.t as f64 / self.q as f64;
-        let out_0 = (out_0_raw * delta_inv).modulo(self.q, degree);
-        let out_1 = (out_1_raw * delta_inv).modulo(self.q, degree);
-        let out_2 = (out_2_raw * delta_inv).modulo(self.q, degree);
+        let out_0 = (out_0_raw * delta_inv) % (self.q, degree);
+        let out_1 = (out_1_raw * delta_inv) % (self.q, degree);
+        let out_2 = (out_2_raw * delta_inv) % (self.q, degree);
 
         (out_0, out_1, out_2)
-    }
-
-    pub fn mul_1(&self, other: Ciphertext, rlk: &RelinearizationKey1) -> Ciphertext {
-        let (c_0, c_1, c_2) = self.basic_mul(other);
-
-        self.relinearization_1(c_0, c_1, c_2, rlk)
     }
 
     fn relinearization_1(
@@ -86,37 +80,26 @@ impl Ciphertext {
             t: self.t,
         }
     }
-    /*
-    pub fn mul_2(&self, other: Ciphertext, rlk: RelinearizationKey2) -> Ciphertext {
-        let (c_0, c_1, c_2) = self._basic_mul(other);
-
-        self.relinearization_2(c_0, c_1, c_2, rlk)
-    }
 
     fn relinearization_2(
         &self,
         c_0: Poly,
         c_1: Poly,
         c_2: Poly,
-        rlk: RelinearizationKey2,
+        rlk: &RelinearizationKey2,
     ) -> Ciphertext {
-        let q = c_0.q;
-        let mut rlk_0_q = rlk.rlk_0.clone();
-        let mut rlk_1_q = rlk.rlk_1.clone();
-        // Change rlk to be mod q instead of p * q
-        rlk_0_q.q = q;
-        rlk_1_q.q = q;
+        let degree = c_0.degree();
+        let p = rlk.p as f64;
 
-        let p_inv = 1.0 / rlk.p as f64;
-
-        let c_2_0 = c_2.clone() * rlk_0_q * p_inv;
-        let c_2_1 = c_2.clone() * rlk_1_q * p_inv;
+        let c_2_0 = (c_2.clone() * rlk.rlk_0.clone() / p) % (self.q, degree);
+        let c_2_1 = (c_2.clone() * rlk.rlk_1.clone() / p) % (self.q, degree);
         Ciphertext {
-            c_0: c_0 + c_2_0,
-            c_1: c_1 + c_2_1,
+            c_0: (c_0 + c_2_0) % (self.q, degree),
+            c_1: (c_1 + c_2_1) % (self.q, degree),
+            q: self.q,
             t: self.t,
         }
-    }*/
+    }
 }
 
 impl Add<Ciphertext> for Ciphertext {
@@ -150,4 +133,28 @@ impl Neg for Ciphertext {
         self.c_1 = -self.c_1;
         self
     }
+}
+
+impl Mul<(Ciphertext, &RelinearizationKey1)> for Ciphertext {
+    type Output = Self;
+    fn mul(self, other: (Ciphertext, &RelinearizationKey1)) -> Self::Output {
+        let (other_ct, rlk_1) = other;
+
+        let (c_0, c_1, c_2) = self.basic_mul(other_ct);
+
+        self.relinearization_1(c_0, c_1, c_2, rlk_1)     
+    }
+
+}
+
+impl Mul<(Ciphertext, &RelinearizationKey2)> for Ciphertext {
+    type Output = Self;
+    fn mul(self, other: (Ciphertext, &RelinearizationKey2)) -> Self::Output {
+        let (other_ct, rlk_2) = other;
+
+        let (c_0, c_1, c_2) = self.basic_mul(other_ct);
+
+        self.relinearization_2(c_0, c_1, c_2, rlk_2)     
+    }
+
 }

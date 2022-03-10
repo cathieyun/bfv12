@@ -15,7 +15,7 @@ pub struct PublicKey {
 
 #[derive(Clone, Debug)]
 pub struct RelinearizationKey1 {
-    pub val: Vec<(Poly, Poly)>, // TODO(cathie) rename this to avoid confusion.
+    pub val: Vec<(Poly, Poly)>,
     pub base: i64,
     pub l: usize,
 }
@@ -48,7 +48,7 @@ impl SecretKey {
         let a = random_source::get_uniform(q, degree, rng);
         let e = random_source::get_gaussian(std_dev, degree, rng);
         let p_1 = a.clone();
-        let p_0 = (-(a.clone() * s.clone() + e)).modulo(q, degree);
+        let p_0 = (-(a.clone() * s.clone() + e)) % (q, degree);
 
         PublicKey { p_0, p_1 }
     }
@@ -72,32 +72,31 @@ impl SecretKey {
                 let e_i = random_source::get_gaussian(std_dev, degree, rng);
                 let base_i = base.pow(i as u32);
                 let rlk_i_raw = -(a_i.clone() * s.clone() + e_i) + s.clone() * s.clone() * base_i;
-                let rlk_i = rlk_i_raw.modulo(q, degree);
+                let rlk_i = rlk_i_raw % (q, degree);
                 (rlk_i, a_i)
             })
             .collect();
         RelinearizationKey1 { val, base, l }
     }
 
-    // pub fn relinearization_key_gen_2<T: RngCore + CryptoRng>(
-    //     &self,
-    //     std_dev: f64,
-    //     rng: &mut T,
-    //     p: i64,
-    // ) -> RelinearizationKey2 {
-    //     let q = self.poly.q;
-    //     let mut s = self.poly.clone();
-    //     // Change the modulus of all polynomials to p*q
-    //     s.q = p * q;
+    pub fn relinearization_key_gen_2<T: RngCore + CryptoRng>(
+        &self,
+        q: i64,
+        std_dev: f64,
+        rng: &mut T,
+        p: i64,
+    ) -> RelinearizationKey2 {
+        let degree = self.poly.degree();
+        let s = self.poly.clone();
 
-    //     let a = random_source::get_uniform(p * q, self.poly.dimension, p * q, rng);
-    //     let e = random_source::get_gaussian(std_dev, self.poly.dimension, p * q, rng);
-    //     let rlk_0 = -(a.clone() * s.clone() + e) + s.clone() * s.clone() * p;
+        let a = random_source::get_uniform(p * q, degree, rng);
+        let e = random_source::get_gaussian(std_dev, degree, rng);
+        let rlk_0 = (-(a.clone() * s.clone() + e) + s.clone() * s.clone() * p) % (p * q, degree);
 
-    //     RelinearizationKey2 {
-    //         rlk_0,
-    //         rlk_1: a,
-    //         p,
-    //     }
-    // }
+        RelinearizationKey2 {
+            rlk_0,
+            rlk_1: a,
+            p,
+        }
+    }
 }
