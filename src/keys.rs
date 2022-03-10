@@ -110,7 +110,7 @@ impl SecretKey {
     /// * `rng`: the RNG used to generate randomness
     /// * `base`: the decomposition base used for relinearization
     ///
-    /// Note on base selection: 
+    /// Note on base selection:
     /// The base can be chosen to trade off relinearisation time and space, for error accumulation.
     /// The larger the base, the larger the error. The bounds on the base are discussed in the paper.
     /// Choosing T = ceil(sqrt(q)) will minimize relinearisation time and space, at the expense of error.

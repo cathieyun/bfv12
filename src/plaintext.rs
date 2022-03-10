@@ -54,7 +54,7 @@ impl Plaintext {
         }
     }
 
-    /// Return the polynomial that represents the encoded messeage
+    /// Return the polynomial that represents the encoded message
     ///
     /// ```rust
     /// use bfv12::Plaintext;
