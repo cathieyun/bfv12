@@ -20,7 +20,7 @@ impl Plaintext {
     /// * `t`: the plaintext modulus
     ///
     /// ```rust
-    /// use bfv::Plaintext;
+    /// use bfv12::Plaintext;
     /// let pt = Plaintext::new(vec![0, 1, 2, 3], 4);
     /// ```
     pub fn new(val: Vec<i64>, t: i64) -> Plaintext {
@@ -40,11 +40,10 @@ impl Plaintext {
     /// # `rng`: the RNG used to generate randomness. Any Rng that imlements RngCore + CryptoRng can be used.
     ///
     /// ```rust
-    /// # extern crate rand;
     /// # use rand::SeedableRng;
     /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
     /// #
-    /// use bfv::Plaintext;
+    /// use bfv12::Plaintext;
     /// let rand_pt = Plaintext::rand(10, 4, &mut rng);
     /// ```
     pub fn rand<T: RngCore + CryptoRng>(degree: usize, t: i64, rng: &mut T) -> Plaintext {
@@ -66,7 +65,6 @@ impl Plaintext {
     /// # `rng`: the RNG used to generate randomness. Any Rng that imlements RngCore + CryptoRng can be used.
     ///
     /// ```rust
-    /// # extern crate rand;
     /// # use rand::SeedableRng;
     /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
     /// # let std_dev = 3.2;
@@ -74,7 +72,7 @@ impl Plaintext {
     /// # let q = 65536;
     /// # let t = 4;
     /// #
-    /// use bfv::{Plaintext, SecretKey};
+    /// use bfv12::{Plaintext, SecretKey};
     /// let pt = Plaintext::new(vec![0, 1, 2, 3], t);
     ///
     /// let secret_key = SecretKey::generate(degree, &mut rng);

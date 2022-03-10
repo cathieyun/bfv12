@@ -1,6 +1,6 @@
 # B/FV homomorphic encryption scheme
 
-This is a toy implementation of the [B](https://eprint.iacr.org/2012/078.pdf)/[FV](https://eprint.iacr.org/2012/144.pdf) homomorphic encryption scheme. The existing library is only somewhat homomorphic: encryption, decryption, ciphertext addition and multiplication are supported, but only up to a certain multiplicative depth. For Fully Homomorphic Encryption (FHE), an implementation of bootstrapping is currently under development.
+This is a toy implementation of the [B](https://eprint.iacr.org/2012/078.pdf)/[FV](https://eprint.iacr.org/2012/144.pdf) homomorphic encryption scheme. The existing library is somewhat homomorphic: encryption, decryption, ciphertext addition and multiplication are supported, but only up to a certain multiplicative depth. For Fully Homomorphic Encryption (FHE), an implementation of bootstrapping is currently under development.
 
 ## Example
 
@@ -11,11 +11,12 @@ The following example shows how to:
 4. Decrypt ciphertexts
 
 ```rust
-extern crate rand;
-use rand::SeedableRng;
-
-extern crate bfv;
-use bfv::{SecretKey, Plaintext};
+# use rand::SeedableRng;
+# 
+# // Generate an RNG. Any Rng that imlements RngCore + CryptoRng can be used.
+# let mut rng = rand::rngs::StdRng::seed_from_u64(18);
+# 
+use bfv12::{SecretKey, Plaintext};
 
 // Set the parameters for this instantiation of B/FV
 let t = 12;         // Plaintext modulus
@@ -23,9 +24,6 @@ let q = 65536;      // Ciphertext modulus
 let std_dev = 3.2;  // Standard deviation for generating the error
 let degree = 4;     // Degree of polynomials used for encoding and encrypting messages
 let rlk_base = (q as f64).log2() as i64; // The base for decomposition during relinearization
-
-// Generate a seeded RNG. Any Rng that imlements RngCore + CryptoRng can be used.
-let mut rng = rand::rngs::StdRng::seed_from_u64(18);
 
 // Generate secret, public, and relinearization keys using the given parameters
 let secret_key = SecretKey::generate(degree, &mut rng);
@@ -56,8 +54,8 @@ assert_eq!(expr_pt.poly(), expected_pt)
 
 ## Links
 
-- [B'12 paper](https://eprint.iacr.org/2012/078.pdf)
-- [FV'12 paper](https://eprint.iacr.org/2012/144.pdf)
+- [Brakerski '12 paper](https://eprint.iacr.org/2012/078.pdf)
+- [Fan, Vercauteren '12 paper](https://eprint.iacr.org/2012/144.pdf)
 
 ## Installation & Use
 

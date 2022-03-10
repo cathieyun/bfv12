@@ -6,7 +6,7 @@ use rand::{CryptoRng, RngCore};
 #[derive(Clone, Debug)]
 pub struct SecretKey {
     ///`s <- R_2`
-    pub poly: Poly,
+    pub(crate) poly: Poly,
 }
 
 /// A BFV12 Public Key
@@ -53,11 +53,10 @@ impl SecretKey {
     /// * `rng`: the RNG used to generate randomness
     ///
     /// ```rust
-    /// # extern crate rand;
     /// # use rand::SeedableRng;
     /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
     /// #
-    /// use bfv::SecretKey;
+    /// use bfv12::SecretKey;
     ///
     /// let degree = 4;
     /// let secret_key = SecretKey::generate(degree, &mut rng);
@@ -75,11 +74,10 @@ impl SecretKey {
     /// * `rng`: the RNG used to generate randomness
     ///
     /// ```rust
-    /// # extern crate rand;
     /// # use rand::SeedableRng;
     /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
     /// #
-    /// use bfv::SecretKey;
+    /// use bfv12::SecretKey;
     ///
     /// let degree = 4;
     /// let std_dev = 3.2;
@@ -112,12 +110,17 @@ impl SecretKey {
     /// * `rng`: the RNG used to generate randomness
     /// * `base`: the decomposition base used for relinearization
     ///
+    /// Note on base selection: 
+    /// The base can be chosen to trade off relinearisation time and space, for error accumulation.
+    /// The larger the base, the larger the error. The bounds on the base are discussed in the paper.
+    /// Choosing T = ceil(sqrt(q)) will minimize relinearisation time and space, at the expense of error.
+    /// Choosing T = log_2(q) will decrease error at the cost of relinearisation time and space.
+    ///
     /// ```rust
-    /// # extern crate rand;
     /// # use rand::SeedableRng;
     /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
     /// #
-    /// use bfv::SecretKey;
+    /// use bfv12::SecretKey;
     ///
     /// let degree = 4;
     /// let std_dev = 3.2;
@@ -159,12 +162,16 @@ impl SecretKey {
     /// * `rng`: the RNG used to generate randomness
     /// * `p`: the amount to scale the modulus, during modulus switching
     ///
+    /// Note on p selection:
+    /// Technically p needs to be >= q^3 for security (see paper discussion on Relinearization Version 2),
+    /// However, setting p = q^3 results in an overflow when taking p * q.
+    /// Therefore, in this library we will test with a smaller p, and recommend using Relinearization Version 1.
+    ///
     /// ```rust
-    /// # extern crate rand;
     /// # use rand::SeedableRng;
     /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
     /// #
-    /// use bfv::SecretKey;
+    /// use bfv12::SecretKey;
     ///
     /// let degree = 4;
     /// let std_dev = 3.2;

@@ -21,7 +21,6 @@ impl Ciphertext {
     /// Decrypt a ciphertext to recover a plaintext, given a secret key
     ///
     /// ```rust
-    /// # extern crate rand;
     /// # use rand::SeedableRng;
     /// # let mut rng = rand::rngs::StdRng::seed_from_u64(18);
     /// # let std_dev = 3.2;
@@ -29,7 +28,7 @@ impl Ciphertext {
     /// # let q = 65536;
     /// # let t = 4;
     /// #
-    /// use bfv::{Plaintext, SecretKey};
+    /// use bfv12::{Plaintext, SecretKey};
     /// let pt = Plaintext::new(vec![0, 1, 2, 3], t);
     ///
     /// let secret_key = SecretKey::generate(degree, &mut rng);
@@ -127,11 +126,9 @@ impl Ciphertext {
 /// Add two ciphertexts. They can be of different degrees.
 ///
 /// ```rust
-/// # extern crate rand;
 /// # use rand::SeedableRng;
 /// #
-/// # extern crate bfv;
-/// # use bfv::{SecretKey, Plaintext};
+/// # use bfv12::{SecretKey, Plaintext};
 /// #
 /// # let t = 12;         // Plaintext modulus
 /// # let q = 65536;      // Ciphertext modulus
@@ -174,11 +171,9 @@ impl Add<Ciphertext> for Ciphertext {
 /// Subtract one ciphertext from another. They can be of different degrees.
 ///
 /// ```rust
-/// # extern crate rand;
 /// # use rand::SeedableRng;
 /// #
-/// # extern crate bfv;
-/// # use bfv::{SecretKey, Plaintext};
+/// # use bfv12::{SecretKey, Plaintext};
 /// #
 /// # let t = 12;         // Plaintext modulus
 /// # let q = 65536;      // Ciphertext modulus
@@ -221,11 +216,9 @@ impl Sub<Ciphertext> for Ciphertext {
 /// Take the negation of a ciphertext.
 ///
 /// ```rust
-/// # extern crate rand;
 /// # use rand::SeedableRng;
 /// #
-/// # extern crate bfv;
-/// # use bfv::{SecretKey, Plaintext};
+/// # use bfv12::{SecretKey, Plaintext};
 /// #
 /// # let t = 12;         // Plaintext modulus
 /// # let q = 65536;      // Ciphertext modulus
@@ -266,11 +259,9 @@ impl Neg for Ciphertext {
 /// key determines whether the multiplication uses Relinearization Version 1 or 2.
 ///
 /// ```rust
-/// # extern crate rand;
 /// # use rand::SeedableRng;
 /// #
-/// # extern crate bfv;
-/// # use bfv::{SecretKey, Plaintext};
+/// # use bfv12::{SecretKey, Plaintext};
 /// #
 /// # let t = 12;         // Plaintext modulus
 /// # let q = 65536;      // Ciphertext modulus
@@ -317,11 +308,9 @@ impl Mul<(Ciphertext, &RelinearizationKey1)> for Ciphertext {
 /// key determines whether the multiplication uses Relinearization Version 1 or 2.
 ///
 /// ```rust
-/// # extern crate rand;
 /// # use rand::SeedableRng;
 /// #
-/// # extern crate bfv;
-/// # use bfv::{SecretKey, Plaintext};
+/// # use bfv12::{SecretKey, Plaintext};
 /// #
 /// # let t = 12;         // Plaintext modulus
 /// # let q = 65536;      // Ciphertext modulus
